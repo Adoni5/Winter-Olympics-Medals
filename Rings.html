@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Winter Olympics</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            div.tooltip {
+                color: #222; 
+                background: #fff; 
+                padding: .5em; 
+                text-shadow: #f5f5f5 0 1px 0;
+                border-radius: 2px; 
+                box-shadow: 0px 0px 2px 0px #a6a6a6; 
+                opacity: 0.9; 
+                position: absolute;
+            }
+            div.tooltip.hidden {
+                opacity : 0;
+            }
+            g {
+                position: absolute;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container"></div>
+        <script src="https://d3js.org/d3.v4.min.js"></script>        
+        <script src="https://d3js.org/d3-color.v1.min.js"></script>
+        <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+        <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+        <script>
+
+            var medalTotal, goldArr, silverArr, bronzeArr, total;
+            var eventsData, tallyData;
+            //read in winter olympics csv
+
+            //read in winter olympics medal tally
+            d3.csv("winter_olympic_medal_tally.csv", function (data) {
+                //initialise global variables
+                medalTotal = {};
+                tallyData = data;
+                goldCount = 0;
+                goldCheck = 0;
+                silverTally = {};
+                goldArr = [];
+                silverArr = [];
+                bronzeArr = [];
+                totalArr = [];
+                d3.csv("athletesTopTen.csv", function (data) {
+                    var Athletes = data;
+
+                    //iterate over array of medal tallys
+                    for (var i = 0; i < tallyData.length; i++) {
+                        //total number of gold medals
+                        goldCount += parseInt(tallyData[i].Gold);
+                        //if this country has an element in the array add to it
+                        if (medalTotal[tallyData[i].Country]) {
+                            medalTotal[tallyData[i].Country]["Gold"] += parseInt(tallyData[i].Gold);
+                            medalTotal[tallyData[i].Country]["Silver"] += parseInt(tallyData[i].Silver);
+                            medalTotal[tallyData[i].Country]["Bronze"] += parseInt(tallyData[i].Bronze);
+                            var Total = parseInt(tallyData[i].Gold) + parseInt(tallyData[i].Silver) + parseInt(tallyData[i].Bronze);
+                            medalTotal[tallyData[i].Country]["Total"] += Total;
+                        } else {
+                            medalTotal[tallyData[i].Country] = {};
+                            medalTotal[tallyData[i].Country]["Gold"] = parseInt(tallyData[i].Gold);
+                            medalTotal[tallyData[i].Country]["Silver"] = parseInt(tallyData[i].Silver);
+                            medalTotal[tallyData[i].Country]["Bronze"] = parseInt(tallyData[i].Bronze);
+                            var Total = parseInt(tallyData[i].Gold) + parseInt(tallyData[i].Silver) + parseInt(tallyData[i].Bronze);
+                            medalTotal[tallyData[i].Country]["Total"] = Total;
+                        }
+
+
+                    }
+                    console.log(medalTotal);
+                    var keys = Object.keys(medalTotal);
+                    for (let i = 0; i < keys.length; i++) {
+                        var obj = {};
+                        if (medalTotal[keys[i]]["Gold"] !== 0) {
+                            obj = {};
+                            obj.Country = keys[i];
+                            obj.Gold = medalTotal[keys[i]]["Gold"];
+                            goldArr.push(obj);
+                        }
+                        if (medalTotal[keys[i]]["Silver"] !== 0) {
+                            obj = {};
+                            obj.Country = keys[i];
+                            obj.Silver = medalTotal[keys[i]]["Silver"];
+                            silverArr.push(obj);
+                        }
+                        if (medalTotal[keys[i]]["Bronze"] !== 0) {
+                            obj = {};
+                            obj.Country = keys[i];
+                            obj.Bronze = medalTotal[keys[i]]["Bronze"];
+                            bronzeArr.push(obj);
+                        }
+                        if (medalTotal[keys[i]]["Total"] !== 0) {
+                            obj = {};
+                            obj.Country = keys[i];
+                            obj.Total = medalTotal[keys[i]]["Total"];
+                            totalArr.push(obj);
+                        }
+
+                    }
+                    console.log(keys);
+                    console.log(goldArr);
+                    console.log(totalArr);
+                    var gArcs = d3.pie().padAngle(0.005)(goldArr.map(function (d) {
+
+                        return d.Gold;
+
+                    }));
+                    var sArcs = d3.pie().padAngle(0.005)(silverArr.map(function (d) {
+                        return d.Silver;
+                    }));
+                    var bArcs = d3.pie().padAngle(0.005)(bronzeArr.map(function (d) {
+                        return d.Bronze;
+                    }));
+                    var tArcs = d3.pie().padAngle(0.005)(totalArr.map(function (d) {
+                        return d.Total;
+                    }));
+                    console.log(gArcs);
+                    console.log(sArcs);
+                    console.log(tArcs);
+                    var c = document.getElementById('container');
+                    var width = c.offsetWidth;
+                    var height = width / 2;
+                    var dheight = width / 2;
+                    var radius = (width / 10) + 10;
+                    var tooltip = d3.select("#container").append("div").attr("class", "tooltip hidden");
+                    var offsetL = c.offsetLeft + 20;
+                    var offsetT = c.offsetTop + 10;
+                    var innerRadiusArc = radius - 20;
+                    var arcGenerator = d3.arc()
+                            .innerRadius(innerRadiusArc)
+                            .outerRadius(radius)
+
+                            .startAngle(function (d) {
+                                return d.startAngle - 0.3;
+                            })
+                            .endAngle(function (d) {
+                                return d.endAngle - 0.3;
+                            });
+
+                    d3.selection.prototype.moveToFront = function () {
+                        return this.each(function () {
+                            this.parentNode.appendChild(this);
+                        });
+                    };
+                    function handleMouseOver() {
+                        var mouse = d3.mouse(svg.node()).map(function (d) {
+                            return parseInt(d);
+                        });
+                        var y = 0;
+                        if (this.getAttribute("id")) {
+                            console.log("if");
+                            y = this.getAttribute("id");
+                        }
+                        var sel = d3.select("#" + this.getAttribute("class"));
+                        sel.moveToFront();
+                        tooltip.classed("hidden", false)
+                                .attr("style", "left:" + (mouse[0] + offsetL) + "px;top:" + (mouse[1] + offsetT) + "px")
+                                .html(y + ": " + this.getAttribute("score"));
+                    }
+
+                    function handleMouseOut() {
+                        tooltip.classed("hidden", true);
+
+                    }
+                    var zoom = d3.zoom()
+                            .scaleExtent([1, 1])
+                            .on("zoom", move);
+                    function move() {
+                        g.attr("transform", d3.event.transform);
+                    }
+
+                    var svg = d3.select("#container").append("svg")
+                            .attr("id", "svg").attr("height", dheight).attr("width", width); //.call(zoom);
+
+                    svg.append("g").attr("id", "gold").attr("transform", "translate(" + (width / 5) + "," + height / 2 + ")");
+                    svg.append("g").attr("id", "silver").attr("transform", "translate(" + (width / 5 + radius) + "," + (height / 2 + radius) + ")");
+                    svg.append("g").attr("id", "bronze").attr("transform", "translate(" + (width / 5 + (radius * 2) + 5) + "," + height / 2 + ")");
+                    svg.append("g").attr("id", "total").attr("transform", "translate(" + (width / 5 + radius * 3 + 5) + "," + (height / 2 + radius) + ")");
+                    svg.append("g").attr("id", "athletes").attr("transform", "translate(" + (width / 5 + (radius * 4) + 10) + "," + (height / 2) + ")");
+
+                    function label() {
+                        let labels = [
+                            {"Text": "Gold", "id": "#gold"}, {"Text": "Silver", "id": "#silver"}, {"Text": "Bronze", "id": "#bronze"}, {"Text": "Total", "id": "#total"}, {"Yext": "Athletes", "id": "#athletes"}];
+                        for(let i = 0; i< labels.length)                        
+                                                
+//                        svg.selectAll("text")
+//                                .data(labels)
+//                                .enter()
+//                                
+//                                .append("text")
+//                                .select(function(d){d.id;})
+//                                .text(function (d) {
+//                                    return d.Text;
+//                                })
+//                                .attr("text-anchor", "middle")
+//                                .attr("font-family", "sans-serif")
+//                                .attr("font-size", "20px")
+//                                .attr("fill", "red");
+//                        ;
+
+                    }
+                    label();
+                    var shadowWidth = 7;
+                    var outerRadiusArcShadow = innerRadiusArc + 1;
+                    var innerRadiusArcShadow = innerRadiusArc - shadowWidth;
+                    //data is the pie arc data
+                    function createShadow(outerRadius, innerRadius,
+                            idName, data, fillFunction, fill) {
+                        var arcGenerator2 = d3.arc()
+                                .innerRadius(outerRadius)
+                                .outerRadius(innerRadius)
+
+                                .startAngle(function (d) {
+                                    return d.startAngle - 0.3;
+                                })
+                                .endAngle(function (d) {
+                                    return d.endAngle - 0.3;
+                                });
+                        var path = d3.select('#' + idName).selectAll('#' + idName)
+                                .data(data)
+                                .enter()
+                                .append('path')
+                                .attr(
+                                        "d", arcGenerator2
+
+                                        ).attr("fill", fillFunction(fill));
+
+                        path.transition()
+                                .duration(1000)
+                                .attrTween('d', function (d) {
+                                    var interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+                                    return function (t) {
+                                        return arcGenerator2(interpolate(t));
+                                    };
+                                });
+                    }
+
+                    console.log(d3.hsl("hsl(35, 93%, 34%)"));
+                    function fill(d) {
+                        var c = d3.hsl(d);
+                        return d3.hsl((c.h + 6), (c.s - .08), (c.l - .05));
+                    }
+                    function gAppend(id, array, fill, c, arcs, name) {
+                        var path = d3.select(id)
+                                .selectAll('path')
+                                .data(arcs)
+                                .enter()
+                                .append('path')
+                                .attr("d", arcGenerator)
+                                .attr("id", function (d, i) {
+                                    return array[i][name];
+                                })
+                                .attr("score", function (d, i) {
+                                    return d.value;
+                                })
+                                .attr("class", c)
+                                .style("fill", fill)
+                                .style("border", "1px solid black")
+                                .on("mouseover", handleMouseOver)
+                                .on("mouseout", handleMouseOut);
+
+                        path.transition()
+                                .duration(1000)
+                                .attrTween('d', function (d) {
+                                    var interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+                                    return function (t) {
+                                        return arcGenerator(interpolate(t));
+                                    };
+                                });
+                    }
+                    gAppend("#gold", goldArr, "gold", "gold", gArcs, "Country");
+                    gAppend("#silver", silverArr, "silver", "silver", sArcs, "Country");
+                    gAppend("#bronze", bronzeArr, "hsl(35, 93%, 34%)", "bronze", bArcs, "Country");
+                    gAppend("#total", totalArr, "green", "total", tArcs, "Country");
+                    createShadow(outerRadiusArcShadow, innerRadiusArcShadow, "gold", gArcs, fill, "gold");
+                    createShadow(outerRadiusArcShadow, innerRadiusArcShadow, "silver", sArcs, fill, "silver");
+                    createShadow(outerRadiusArcShadow, innerRadiusArcShadow, "bronze", bArcs, fill, "hsl(35, 93%, 34%)");
+                    createShadow(outerRadiusArcShadow, innerRadiusArcShadow, "total", tArcs, fill, "green");
+                    console.log(Athletes);
+
+
+                    var AthArr = [];
+
+                    for (let i = 0; i < Athletes.length; i++) {
+
+                        var Meta = {};
+                        var Ath = {};
+
+                        Ath.Athlete = Athletes[i]["Athlete"];
+                        Ath.Count = Athletes[i]["Count"];
+                        AthArr.push(Ath);
+
+                    }
+                    console.log(AthArr);
+                    var aArcs = d3.pie().padAngle(0.005)(AthArr.map(function (d) {
+                        return d.Count;
+                    }));
+                    console.log(aArcs);
+                    gAppend("#athletes", AthArr, "red", "athletes", aArcs, "Athlete");
+                    createShadow(outerRadiusArcShadow, innerRadiusArcShadow, "athletes", aArcs, fill, "red");
+                })
+
+                        ;
+            });
+
+
+        </script>
+
+
+    </body>
+</html>
